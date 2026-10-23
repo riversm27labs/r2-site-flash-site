@@ -1200,6 +1200,7 @@
     return res.json();
   }
 
+  async function supabaseRpc(fn, args){ const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify(args) }); if(!res.ok) throw new Error("Falha ao chamar " + fn + ": " + res.status); return res.json(); }
   function formatBRL(value){
     const num = Number(value);
     if(Number.isNaN(num)) return null;
@@ -1278,7 +1279,7 @@
 
     try {
       // 1) Descobre o site pelo slug
-      const siteRows = await supabaseSelect('sites', `slug=eq.${encodeURIComponent(SITE_SLUG)}&select=id,name,slug,status,domain,whatsapp_number,whatsapp_message,price_amount,price_installments,price_note,hero_headline,hero_subheadline,final_cta_headline`);
+      const pub = await supabaseRpc("get_site_public", { p_slug: SITE_SLUG }); const siteRows = pub && pub.site ? [pub.site] : [];
       const site = siteRows && siteRows[0];
       if(!site) {
         console.warn(`Nenhum site cadastrado no painel com o slug "${SITE_SLUG}".`);
@@ -1286,10 +1287,7 @@
       }
 
       // 2) Busca portfólio e FAQ desse site específico
-      const [faqRows, portfolioRows] = await Promise.all([
-        supabaseSelect('faq_items', `site_id=eq.${site.id}&is_visible=eq.true&order=order_index.asc&select=*`),
-        supabaseSelect('portfolio_items', `site_id=eq.${site.id}&is_visible=eq.true&order=order_index.asc&select=*`),
-      ]);
+      const faqRows = (pub && pub.faq) || []; const portfolioRows = (pub && pub.portfolio) || [];
 
       applySettings(site);
       renderFaq(faqRows);
